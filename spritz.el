@@ -12,7 +12,7 @@
 ;; update
 ;; output
 
-(require 'cl)
+(require 'cl-lib)
 
 (cl-defstruct (spritz (:constructor spritz--create)
                       (:copier nil)
@@ -40,9 +40,9 @@
                        (absorb-nibble (x) `(spritz--absorb-nibble this ,x))
                        (absorb-stop () `(spritz--absorb-stop this))
                        (shuffle () `(spritz--shuffle this))
-                       (whip (r) `(spritz--whip this r))
+                       (whip (r) `(spritz--whip this ,r))
                        (crush () `(spritz--crush this))
-                       (squeeze (r) `(spritz--squeeze this r))
+                       (squeeze (r) `(spritz--squeeze this ,r))
                        (drip () `(spritz--drip this))
                        (update () `(spritz--update this))
                        (output () `(spritz--output this)))
@@ -51,7 +51,8 @@
 (defun spritz-create (&optional key)
   (let ((spritz (spritz--create)))
     (when key
-      (spritz-absorb spritz key))
+      (spritz--absorb spritz key)
+      (spritz--absorb-stop spritz))
     spritz))
 
 (spritz--defun absorb (string)
@@ -65,27 +66,26 @@
 (spritz--defun absorb-nibble (x)
   (when (= a 128)
     (shuffle))
-  (rotatef (s a) (s (+ 128 x))))
+  (cl-rotatef (s a) (s (+ 128 x))))
 
 (spritz--defun absorb-stop ()
   (when (= a 128)
     (shuffle))
-  (incf a))
+  (cl-incf a))
 
 (spritz--defun shuffle ()
-  (prog1 this
-    (whip (* 2 256))
-    (crush)
-    (whip (* 2 256))
-    (crush)
-    (whip (* 2 256))
-    (setf a 0)))
+  (whip (* 2 256))
+  (crush)
+  (whip (* 2 256))
+  (crush)
+  (whip (* 2 256))
+  (setf a 0))
 
 (spritz--defun whip (r)
-  (dotimes (v r)
+  (dotimes (_ r)
     (update))
-  (cl-loop do (incf w)
-           while (= 1 (gcd w 256))))
+  (cl-loop do (cl-incf w)
+           while (= 1 (cl-gcd w 256))))
 
 (spritz--defun crush ()
   (dotimes (v 128)
@@ -97,7 +97,7 @@
     (shuffle))
   (let ((p (make-string r 0)))
     (dotimes (v r p)
-      (setf (aref p v (drip))))))
+      (setf (aref p v) (drip)))))
 
 (spritz--defun drip ()
   (when (> a 0)
@@ -106,12 +106,10 @@
   (output))
 
 (spritz--defun update ()
-  (incf i w)
+  (cl-incf i w)
   (setf j (+ k (s (+ j (s i)))))
   (setf k (+ i k (s j)))
-  (rotatef (s i) (s j)))
+  (cl-rotatef (s i) (s j)))
 
 (spritz--defun output ()
   (setf z (s (+ j (s (+ i (s (+ z k))))))))
-
-;(spritz-create "foo")
