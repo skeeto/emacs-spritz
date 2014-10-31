@@ -6,6 +6,8 @@
 
 ;; These test vectors come right out of the Spritz white paper.
 
+;; emacs -batch -Q -L . -l spritz-test.el -f ert-run-tests-batch
+
 ;;; Code:
 
 (require 'ert)
