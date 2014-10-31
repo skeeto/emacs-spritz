@@ -12,7 +12,8 @@
 ;; http://people.csail.mit.edu/rivest/pubs/RS14.pdf
 
 ;; Spritz is a sponge function and, as such, has an API analgous to a
-;; sponge. It absorbs bytes and is squeezed to emit bytes.
+;; sponge. It absorbs bytes and is squeezed to emit bytes. This is the
+;; sponge API:
 
 ;; `spritz-create'      -- initializes a new state
 ;; `spritz-copy'        -- copy an existing state
@@ -21,10 +22,9 @@
 ;; `spritz-drip'        -- output a single byte
 ;; `spritz-squeeze'     -- output multiple bytes (convenience)
 
-;; These two methods can be used to implement all sorts of
-;; cryptographic functions: hash, MAC, PRNG, encryption, and
-;; decryption. Some of these are provided as a slightly highter level
-;; API:
+;; These methods are used to implement all sorts of cryptographic
+;; functions: hash, MAC, PRNG, encryption, and decryption. Some of
+;; these are provided as a slightly highter level API:
 
 ;; `spritz-hash'        -- hashes a string or a buffer
 ;; `spritz-random'      -- random number generator (like `cl-random')
@@ -37,6 +37,12 @@
 ;; is secure. Additional entropy, such as bytes from /dev/random, can
 ;; be absorbed into this state by passing it to `spritz-random-stir'.
 ;; Accidentally absorbing non-random data is harmless.
+
+;; Finally, two user interface commands are defined. These use Spritz
+;; as both a stream cipher and key derivation function.
+
+;; `spritz-encrypt-buffer'
+;; `spritz-decrypt-buffer'
 
 ;;; Code:
 
