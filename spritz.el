@@ -1,10 +1,42 @@
-;;; -*- lexical-binding: t; -*-
+;;; spritz.el --- RC4-like stream cipher -*- lexical-binding: t; -*-
 
 ;; This is free and unencumbered software released into the public domain.
 
 ;;; Commentary:
 
+;; Spritz is a new stream cipher by Ron Rivest and Jacob Schuldt. It's
+;; basically a redesign of RC4 using modern cryptographics tools and
+;; knowledge. This implementation is based directly on the whitepaper,
+;; implementing the the exact set of low-level primitives.
+
 ;; http://people.csail.mit.edu/rivest/pubs/RS14.pdf
+
+;; Spritz is a sponge function and, as such, has an API analgous to a
+;; sponge. It absorbs bytes and is squeezed to emit bytes.
+
+;; `spritz-create'      -- initializes a new state
+;; `spritz-copy'        -- copy an existing state
+;; `spritz-absorb'      -- absorb bytes into the state
+;; `spritz-absorb-stop' -- cleanly separates different inputs
+;; `spritz-drip'        -- output a single byte
+;; `spritz-squeeze'     -- output multiple bytes (convenience)
+
+;; These two methods can be used to implement all sorts of
+;; cryptographic functions: hash, MAC, PRNG, encryption, and
+;; decryption. Some of these are provided as a slightly highter level
+;; API:
+
+;; `spritz-hash'        -- hashes a string or a buffer
+;; `spritz-random'      -- random number generator (like `cl-random')
+;; `spritz-random-iv'   -- generate a secure initialization vector (IV)
+;; `spritz-random-uuid' -- generate a version 4 UUID
+
+;; The "random" functions will, by default, use an internal random
+;; state that is seeded at package load time by a dozen different
+;; sources of entropy. This ensures the output of the PRNG functions
+;; is secure. Additional entropy, such as bytes from /dev/random, can
+;; be absorbed into this state by passing it to `spritz-random-stir'.
+;; Accidentally absorbing non-random data is harmless.
 
 ;;; Code:
 
@@ -48,7 +80,7 @@
                        (output () `(spritz--output this)))
            ,@body)))))
 
-;; Core functions (private):
+;; Core primitives (private):
 
 (spritz--defun absorb (string)
   (dotimes (v (length string))
@@ -193,8 +225,8 @@ used to compute MAC (Message Authentication Codes)."
 (defvar spritz-random-state (spritz-create)
   "Global random state for Spritz PRNG functions.")
 
-(defun spritz--global-stir (&rest entropy)
-  "Add more entropy to `spritz-random-state'."
+(defun spritz-random-stir (&rest entropy)
+  "Add additional entropy to `spritz-random-state'."
   (spritz-absorb spritz-random-state
                  (mapconcat (lambda (x) (format "%s" x))
                             (nconc (list (current-time)
@@ -210,13 +242,13 @@ used to compute MAC (Message Authentication Codes)."
                             "")))
 
 (cl-eval-when (load eval)
-  (spritz--global-stir  ; gather up some non-changing system entropy
+  (spritz-random-stir  ; gather up some non-changing system entropy
    (user-uid) (emacs-pid) (system-name) (user-full-name) user-mail-address))
 
 (defun spritz-random-iv (size)
   "Create a secure, random IV of SIZE bytes."
   (when (= 0 (random 1000))
-    (spritz--global-stir)) ; occasionally mix in more entropy
+    (spritz-random-stir)) ; occasionally mix in more entropy
   (spritz-squeeze spritz-random-state size))
 
 (defun spritz--random-to-integer (random)
