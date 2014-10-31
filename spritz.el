@@ -122,6 +122,12 @@
         (spritz--absorb-stop spritz)
         (spritz--absorb spritz iv)))))
 
+(defun spritz-copy (spritz)
+  "Return an independent copy of SPRITZ with matching internal state."
+  (let ((copy (copy-sequence spritz)))
+    (prog1 copy
+      (setf (spritz--s copy) (copy-sequence (spritz--s spritz))))))
+
 (defun spritz-absorb (spritz value)
   "Absorb VALUE into SPRITZ, returning SPRITZ.
 VALUE can be a string or an integer. Integers are converted into
