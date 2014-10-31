@@ -188,7 +188,70 @@ used to compute MAC (Message Authentication Codes)."
           hash
         (mapconcat (lambda (v) (format "%02x" v)) hash "")))))
 
-;; User Interface:
+;; PRNG API:
+
+(defvar spritz-random-state (spritz-create)
+  "Global random state for Spritz PRNG functions.")
+
+(defun spritz--global-stir (&rest entropy)
+  "Add more entropy to `spritz-random-state'."
+  (spritz-absorb spritz-random-state
+                 (mapconcat (lambda (x) (format "%s" x))
+                            (nconc (list (current-time)
+                                         (emacs-uptime)
+                                         (garbage-collect)
+                                         (random)
+                                         command-history
+                                         (list-system-processes)
+                                         (cl-random 1.0)
+                                         (buffer-list)
+                                         (recent-keys))
+                                   entropy)
+                            "")))
+
+(cl-eval-when (load eval)
+  (spritz--global-stir  ; gather up some non-changing system entropy
+   (user-uid) (emacs-pid) (system-name) (user-full-name) user-mail-address))
+
+(defun spritz-random-iv (size)
+  "Create a secure, random IV of SIZE bytes."
+  (when (= 0 (random 1000))
+    (spritz--global-stir)) ; occasionally mix in more entropy
+  (spritz-squeeze spritz-random-state size))
+
+(defun spritz--random-to-integer (random)
+  "Read big-endian integer from unibyte string RANDOM."
+  (cl-reduce (lambda (accum x) (logior (lsh accum 8) x)) random))
+
+(cl-defun spritz-random (limit &optional (state spritz-random-state))
+  "Like `cl-random', but use Spritz-based PRNG, returning [0, LIMIT).
+LIMIT is a float or an integer."
+  (cl-etypecase limit
+    (integer
+     (if (= limit 1)
+         0
+       (cl-loop with bytes = (ceiling (ceiling (log limit) (log 2)) 8)
+                for random = (spritz-squeeze state bytes)
+                for n = (spritz--random-to-integer random)
+                when (< n limit)
+                return n)))
+    (float
+     (let ((random (spritz-squeeze state 6)))
+       (* limit
+          (/ (spritz--random-to-integer random)
+             (expt 2.0 (* 8 6))))))))
+
+(defvar spritz--uuid-format
+  "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x")
+
+(cl-defun spritz-random-uuid (&optional (state spritz-random-state))
+  "Generate a random version 4 UUID."
+  (let* ((iv (coerce (spritz-random-iv 16) 'list))
+         (uuid (apply #'format spritz--uuid-format iv)))
+    (prog1 uuid
+      (setf (aref uuid 14) ?4))))
+
+;; UI:
 
 (require 'password-cache)
 
