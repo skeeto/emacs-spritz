@@ -1,16 +1,8 @@
 ;;; -*- lexical-binding: t; -*-
 
-;; absorb
-;; absorb-byte b
-;; absorb-nibble x
-;; absorb-stop
-;; shuffle
-;; whip r
-;; crush
-;; squeeze r
-;; drip
-;; update
-;; output
+;; http://people.csail.mit.edu/rivest/pubs/RS14.pdf
+
+;;; Code:
 
 (require 'cl-lib)
 
@@ -48,13 +40,6 @@
                        (output () `(spritz--output this)))
            ,@body)))))
 
-(defun spritz-create (&optional key)
-  (let ((spritz (spritz--create)))
-    (when key
-      (spritz--absorb spritz key)
-      (spritz--absorb-stop spritz))
-    spritz))
-
 (spritz--defun absorb (string)
   (dotimes (v (length string))
     (absorb-byte (aref string v))))
@@ -66,7 +51,8 @@
 (spritz--defun absorb-nibble (x)
   (when (= a 128)
     (shuffle))
-  (cl-rotatef (s a) (s (+ 128 x))))
+  (cl-rotatef (s a) (s (+ 128 x)))
+  (cl-incf a))
 
 (spritz--defun absorb-stop ()
   (when (= a 128)
@@ -84,7 +70,7 @@
 (spritz--defun whip (r)
   (dotimes (_ r)
     (update))
-  (cl-loop do (cl-incf w)
+  (cl-loop do (setf w (mod (+ w 1) 256))
            while (= 1 (cl-gcd w 256))))
 
 (spritz--defun crush ()
@@ -106,10 +92,29 @@
   (output))
 
 (spritz--defun update ()
-  (cl-incf i w)
-  (setf j (+ k (s (+ j (s i)))))
-  (setf k (+ i k (s j)))
+  (setf i (mod (+ i w) 256))
+  (setf j (mod (+ k (s (+ j (s i)))) 256))
+  (setf k (mod (+ i k (s j)) 256))
   (cl-rotatef (s i) (s j)))
 
 (spritz--defun output ()
   (setf z (s (+ j (s (+ i (s (+ z k))))))))
+
+;; Public API:
+
+(defun spritz-create (&optional key)
+  "Create a new Spritz state, optionally keying it with KEY."
+  (let ((spritz (spritz--create)))
+    (when key
+      (spritz--absorb spritz key)
+      (spritz--absorb-stop spritz))
+    spritz))
+
+(defalias 'spritz-absorb #'spritz--absorb
+  "Absorb STRING into the Spritz state.")
+
+(defalias 'spritz-absorb-stop #'spritz--absorb-stop
+  "Stop absorbing input and prepare the Spritz state for output.")
+
+(defalias 'spritz-squeeze #'spritz--squeeze
+  "Produce R bytes of output from the Spritz state.")
