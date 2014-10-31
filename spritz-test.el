@@ -22,7 +22,7 @@
   (spritz--test-basic "arcfour" [#x1a #xfa #x8b #x5e #xe3 #x37 #xdb #xc7]))
 
 (defun spritz--test-hash (string size hash)
-  (let ((result (spritz-hash string :size size)))
+  (let ((result (spritz-hash string :size size :binary t)))
     (should (equal hash (vconcat (substring result 0 (length hash)))))))
 
 (ert-deftest spritz-hash ()
