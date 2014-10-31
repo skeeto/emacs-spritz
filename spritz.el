@@ -181,3 +181,29 @@ used to compute MAC (Message Authentication Codes)."
       (if binary
           hash
         (mapconcat (lambda (v) (format "%02x" v)) hash "")))))
+
+;; User Interface:
+
+(require 'password-cache)
+
+(defun spritz-encrypt-buffer (key)
+  (interactive (list (password-read "Key: ")))
+  (let ((spritz (spritz-create key)))
+    (spritz--process-buffer spritz #'+)))
+
+(defun spritz-decrypt-buffer (key)
+  (interactive (list (password-read "Key: ")))
+  (let ((spritz (spritz-create key)))
+    (spritz--process-buffer spritz #'-))
+  (set-buffer-multibyte t))
+
+(defun spritz--process-buffer (spritz op)
+  (set-buffer-multibyte nil)
+  (setf (point) (point-min))
+  (while (< (point) (point-max))
+    (let ((c (char-after))
+          (z (spritz-drip spritz)))
+      (delete-char 1)
+      (insert-char (mod (funcall op c z) 256)))))
+
+;;; spritz.el ends here
