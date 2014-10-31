@@ -1,5 +1,9 @@
 ;;; -*- lexical-binding: t; -*-
 
+;; This is free and unencumbered software released into the public domain.
+
+;;; Commentary:
+
 ;; http://people.csail.mit.edu/rivest/pubs/RS14.pdf
 
 ;;; Code:
@@ -20,6 +24,7 @@
   (-w 1))
 
 (defmacro spritz--defun (name args &rest body)
+  "This macro allows the core functions to be written as clearly as possible."
   (declare (indent defun))
   (let ((func-name (intern (concat "spritz--" (symbol-name name)))))
     `(defun ,func-name (this ,@args)
@@ -28,7 +33,8 @@
                             (k (spritz--k this))
                             (a (spritz--a this))
                             (z (spritz--z this))
-                            (w (spritz--w this)))
+                            (w (spritz--w this))
+                            (n 256))
          (cl-macrolet ((s (v) `(aref (spritz--s this) (mod ,v 256)))
                        (absorb-byte (b) `(spritz--absorb-byte this ,b))
                        (absorb-nibble (x) `(spritz--absorb-nibble this ,x))
@@ -42,6 +48,8 @@
                        (output () `(spritz--output this)))
            ,@body)))))
 
+;; Core functions (private):
+
 (spritz--defun absorb (string)
   (dotimes (v (length string))
     (absorb-byte (aref string v))))
@@ -51,34 +59,34 @@
   (absorb-nibble (lsh b -4)))
 
 (spritz--defun absorb-nibble (x)
-  (when (= a 128)
+  (when (= a (/ n 2))
     (shuffle))
-  (cl-rotatef (s a) (s (+ 128 x)))
+  (cl-rotatef (s a) (s (+ (/ n 2) x)))
   (cl-incf a))
 
 (spritz--defun absorb-stop ()
-  (when (= a 128)
+  (when (= a (/ n 2))
     (shuffle))
   (cl-incf a))
 
 (spritz--defun shuffle ()
-  (whip (* 2 256))
+  (whip (* 2 n))
   (crush)
-  (whip (* 2 256))
+  (whip (* 2 n))
   (crush)
-  (whip (* 2 256))
+  (whip (* 2 n))
   (setf a 0))
 
 (spritz--defun whip (r)
   (dotimes (_ r)
     (update))
-  (cl-loop do (setf w (mod (+ w 1) 256))
-           while (= 1 (cl-gcd w 256))))
+  (cl-loop do (setf w (mod (1+ w) n))
+           until (= 1 (cl-gcd w n))))
 
 (spritz--defun crush ()
-  (dotimes (v 128)
-    (when (> (s v) (s (- 255 v)))
-      (cl-rotatef (s v) (s (- 255 v))))))
+  (dotimes (v (/ n 2))
+    (when (> (s v) (s (- n 1 v)))
+      (cl-rotatef (s v) (s (- n 1 v))))))
 
 (spritz--defun squeeze (r)
   (when (> a 0)
@@ -94,9 +102,9 @@
   (output))
 
 (spritz--defun update ()
-  (setf i (mod (+ i w) 256))
-  (setf j (mod (+ k (s (+ j (s i)))) 256))
-  (setf k (mod (+ i k (s j)) 256))
+  (setf i (mod (+ i w) n))
+  (setf j (mod (+ k (s (+ j (s i)))) n))
+  (setf k (mod (+ i k (s j)) n))
   (cl-rotatef (s i) (s j)))
 
 (spritz--defun output ()
