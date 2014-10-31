@@ -114,10 +114,19 @@
         (spritz--absorb-stop spritz)
         (spritz--absorb spritz iv)))))
 
-(defun spritz-absorb (spritz string)
-  "Absorb STRING into SPRITZ, returning SPRITZ."
+(defun spritz-absorb (spritz value)
+  "Absorb VALUE into SPRITZ, returning SPRITZ.
+VALUE can be a string or an integer. Integers are converted into
+a big endian byte strings for absorption. If VALUE is a multibyte
+string, its UTF-8 representation is absorbed."
   (prog1 spritz
-    (spritz--absorb spritz string)))
+    (cl-typecase value
+      (string (spritz--absorb spritz (string-as-unibyte string)))
+      (integer (cl-loop for x = value then (lsh x -8)
+                        while (> x 0)
+                        collect (logand #xff x) into bytes
+                        finally (let ((string (concat (nreverse bytes))))
+                                  (spritz--absorb spritz string)))))))
 
 (defun spritz-absorb-stop (spritz)
   "Absorb the special \"stop\" symbol, returning SPRITZ.
