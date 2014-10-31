@@ -102,7 +102,7 @@
 (spritz--defun output ()
   (setf z (s (+ j (s (+ i (s (+ z k))))))))
 
-;; Public API:
+;; Sponge API:
 
 (defun spritz-create (&optional key iv)
   "Return a new Spritz state, optionally keying it with KEY."
@@ -120,8 +120,8 @@ VALUE can be a string or an integer. Integers are converted into
 a big endian byte strings for absorption. If VALUE is a multibyte
 string, its UTF-8 representation is absorbed."
   (prog1 spritz
-    (cl-typecase value
-      (string (spritz--absorb spritz (string-as-unibyte string)))
+    (cl-etypecase value
+      (string (spritz--absorb spritz (string-as-unibyte value)))
       (integer (cl-loop for x = value then (lsh x -8)
                         while (> x 0)
                         collect (logand #xff x) into bytes
@@ -137,3 +137,39 @@ The purpose is to cleanly separate different inputs."
 (defun spritz-squeeze (spritz n)
   "Produce N bytes of output from SPRITZ."
   (spritz--squeeze spritz n))
+
+(defalias 'spritz-drip #'spritz--drip
+  "Produce a single byte of output from SPRITZ.")
+
+;; High-level API:
+
+(defun spritz--get-string (object start end)
+  "Get a string representation of OBJECT, which may be the OBJECT itself."
+  (cl-etypecase object
+    (string
+     (if (and (null start) (null end))
+         object
+       (substring object (or start 0) (or end (length object)))))
+    (buffer
+     (with-current-buffer object
+       (buffer-substring (or start (point-min)) (or end (point-max)))))))
+
+(cl-defun spritz-hash (object &key (size 20) start end binary domain)
+  "Produce an N-byte Spritz hash of OBJECT.
+OBJECT is either a string or a buffer.
+
+If :binary is non-nil, returns a the binary form of the hash.
+
+The :domain key is used to apply domain separation. This can be
+used to compute MAC (Message Authentication Codes)."
+  (let ((spritz (spritz-create)))
+    (when domain
+      (spritz-absorb spritz domain)
+      (spritz-absorb-stop spritz))
+    (spritz-absorb spritz (spritz--get-string object start end))
+    (spritz-absorb-stop spritz)
+    (spritz-absorb spritz size)
+    (let ((hash (spritz-squeeze spritz size)))
+      (if binary
+          hash
+        (mapconcat (lambda (v) (format "%02x" v)) hash "")))))
