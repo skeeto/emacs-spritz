@@ -244,9 +244,9 @@ LIMIT is a float or an integer."
 (defvar spritz--uuid-format
   "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x")
 
-(cl-defun spritz-random-uuid (&optional (state spritz-random-state))
+(cl-defun spritz-random-uuid ()
   "Generate a random version 4 UUID."
-  (let* ((iv (coerce (spritz-random-iv 16) 'list))
+  (let* ((iv (cl-coerce (spritz-random-iv 16) 'list))
          (uuid (apply #'format spritz--uuid-format iv)))
     (prog1 uuid
       (setf (aref uuid 14) ?4))))
