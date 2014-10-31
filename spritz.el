@@ -291,20 +291,31 @@ LIMIT is a float or an integer."
 (defvar spritz-encrypt-iv-size 64
   "Size of IV for `spritz-encrypt-buffer' and `spritz-decrypt-buffer'.")
 
-(defun spritz-encrypt-buffer (key)
+(cl-defun spritz-derive-key (passphrase &optional (n (* 1024 16)))
+  "Derive an encryption key from PASSPHRASE."
+  (let ((spritz (spritz-create)))
+    (dotimes (_ (1- n))
+      (spritz-absorb spritz passphrase)
+      (spritz-absorb-stop spritz))
+    (spritz-absorb spritz passphrase)
+    (spritz-squeeze spritz 128)))
+
+(defun spritz-encrypt-buffer (passphrase)
   "Encrypt the current buffer with KEY.
 This automatically generates and uses an IV."
-  (interactive (list (password-read "Key: ")))
+  (interactive (list (password-read "Passphrase: ")))
   (let* ((iv (spritz-random-iv spritz-encrypt-iv-size))
+         (key (spritz-derive-key passphrase))
          (spritz (spritz-create key iv)))
     (spritz--process-buffer spritz #'+)
     (setf (point) (point-min))
     (insert iv)))
 
-(defun spritz-decrypt-buffer (key)
+(defun spritz-decrypt-buffer (passphrase)
   "Decrypt the current buffer with KEY."
-  (interactive (list (password-read "Key: ")))
+  (interactive (list (password-read "Passphrase: ")))
   (let* ((iv (buffer-substring 1 (1+ spritz-encrypt-iv-size)))
+         (key (spritz-derive-key passphrase))
          (spritz (spritz-create key iv)))
     (setf (point) (point-min))
     (delete-char spritz-encrypt-iv-size)
@@ -313,6 +324,7 @@ This automatically generates and uses an IV."
 
 (defun spritz--process-buffer (spritz op)
   (set-buffer-multibyte nil)
+  (buffer-disable-undo)
   (setf (point) (point-min))
   (while (< (point) (point-max))
     (let ((c (char-after))
