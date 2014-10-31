@@ -255,14 +255,26 @@ LIMIT is a float or an integer."
 
 (require 'password-cache)
 
+(defvar spritz-encrypt-iv-size 64
+  "Size of IV for `spritz-encrypt-buffer' and `spritz-decrypt-buffer'.")
+
 (defun spritz-encrypt-buffer (key)
+  "Encrypt the current buffer with KEY.
+This automatically generates and uses an IV."
   (interactive (list (password-read "Key: ")))
-  (let ((spritz (spritz-create key)))
-    (spritz--process-buffer spritz #'+)))
+  (let* ((iv (spritz-random-iv spritz-encrypt-iv-size))
+         (spritz (spritz-create key iv)))
+    (spritz--process-buffer spritz #'+)
+    (setf (point) (point-min))
+    (insert iv)))
 
 (defun spritz-decrypt-buffer (key)
+  "Decrypt the current buffer with KEY."
   (interactive (list (password-read "Key: ")))
-  (let ((spritz (spritz-create key)))
+  (let* ((iv (buffer-substring 1 (1+ spritz-encrypt-iv-size)))
+         (spritz (spritz-create key iv)))
+    (setf (point) (point-min))
+    (delete-char spritz-encrypt-iv-size)
     (spritz--process-buffer spritz #'-))
   (set-buffer-multibyte t))
 
@@ -274,5 +286,7 @@ LIMIT is a float or an integer."
           (z (spritz-drip spritz)))
       (delete-char 1)
       (insert-char (mod (funcall op c z) 256)))))
+
+(provide 'spritz)
 
 ;;; spritz.el ends here
