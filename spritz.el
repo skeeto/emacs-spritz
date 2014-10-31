@@ -9,7 +9,9 @@
 (cl-defstruct (spritz (:constructor spritz--create)
                       (:copier nil)
                       (:type vector)) ; disable type checking
-  (-s (vconcat (number-sequence 0 255)))
+  (-s (vconcat (let ((s (make-vector 256 0)))
+                 (dotimes (v 256 s)
+                   (setf (aref s v) v)))))
   (-i 0)
   (-j 0)
   (-k 0)
@@ -102,19 +104,27 @@
 
 ;; Public API:
 
-(defun spritz-create (&optional key)
-  "Create a new Spritz state, optionally keying it with KEY."
+(defun spritz-create (&optional key iv)
+  "Return a new Spritz state, optionally keying it with KEY."
   (let ((spritz (spritz--create)))
-    (when key
-      (spritz--absorb spritz key)
-      (spritz--absorb-stop spritz))
-    spritz))
+    (prog1 spritz
+      (when key
+        (spritz--absorb spritz key))
+      (when iv
+        (spritz--absorb-stop spritz)
+        (spritz--absorb spritz iv)))))
 
-(defalias 'spritz-absorb #'spritz--absorb
-  "Absorb STRING into the Spritz state.")
+(defun spritz-absorb (spritz string)
+  "Absorb STRING into SPRITZ, returning SPRITZ."
+  (prog1 spritz
+    (spritz--absorb spritz string)))
 
-(defalias 'spritz-absorb-stop #'spritz--absorb-stop
-  "Stop absorbing input and prepare the Spritz state for output.")
+(defun spritz-absorb-stop (spritz)
+  "Absorb the special \"stop\" symbol, returning SPRITZ.
+The purpose is to cleanly separate different inputs."
+  (prog1 spritz
+    (spritz--absorb-stop spritz)))
 
-(defalias 'spritz-squeeze #'spritz--squeeze
-  "Produce R bytes of output from the Spritz state.")
+(defun spritz-squeeze (spritz n)
+  "Produce N bytes of output from SPRITZ."
+  (spritz--squeeze spritz n))
