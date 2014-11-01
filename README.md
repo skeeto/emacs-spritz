@@ -40,4 +40,4 @@ both a stream cipher and key derivation function.
 * `spritz-encrypt-buffer`
 * `spritz-decrypt-buffer`
 
-Test vectors can be gound in the unit tests.
+Test vectors can be found in the unit tests.
