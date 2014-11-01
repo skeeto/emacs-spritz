@@ -191,8 +191,9 @@ The purpose is to cleanly separate different inputs."
   "Produce N bytes of output from SPRITZ."
   (spritz--squeeze spritz n))
 
-(defalias 'spritz-drip #'spritz--drip
-  "Produce a single byte of output from SPRITZ.")
+(defun spritz-drip (spritz)
+  "Produce a single byte of output from SPRITZ."
+  (spritz--drip spritz))
 
 ;; High-level API:
 
@@ -208,7 +209,7 @@ The purpose is to cleanly separate different inputs."
        (buffer-substring (or start (point-min)) (or end (point-max)))))))
 
 (cl-defun spritz-hash (object &key (size 20) start end binary domain)
-  "Produce an N-byte Spritz hash of OBJECT.
+  "Produce a SIZE-byte Spritz hash of OBJECT.
 OBJECT is either a string or a buffer.
 
 If :binary is non-nil, returns a the binary form of the hash.
