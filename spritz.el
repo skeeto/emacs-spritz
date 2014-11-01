@@ -52,9 +52,9 @@
                       (:copier nil)
                       (:type vector)) ; disable type checking
   (-tag :spritz)
-  (-s (vconcat (let ((s (make-vector 256 0)))
-                 (dotimes (v 256 s)
-                   (setf (aref s v) v)))))
+  (-s (let ((s (make-vector 256 0)))
+        (dotimes (v 256 s)
+          (setf (aref s v) v))))
   (-i 0)
   (-j 0)
   (-k 0)
