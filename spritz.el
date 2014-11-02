@@ -156,10 +156,10 @@
   (let ((spritz (spritz--create)))
     (prog1 spritz
       (when key
-        (spritz--absorb spritz key))
+        (spritz-absorb spritz key))
       (when iv
-        (spritz--absorb-stop spritz)
-        (spritz--absorb spritz iv)))))
+        (spritz-absorb-stop spritz)
+        (spritz-absorb spritz iv)))))
 
 (defun spritz-copy (spritz)
   "Return an independent copy of SPRITZ with matching internal state."
@@ -169,17 +169,23 @@
 
 (defun spritz-absorb (spritz value)
   "Absorb VALUE into SPRITZ, returning SPRITZ.
-VALUE can be a string or an integer. Integers are converted into
-a big endian byte strings for absorption. If VALUE is a multibyte
-string, its UTF-8 representation is absorbed."
+VALUE can be a string, a buffer, or an integer. Integers are
+converted into a big endian byte strings for absorption. If a
+buffer, the content of the buffer is used. If VALUE is multibyte,
+its UTF-8 representation is absorbed."
   (prog1 spritz
     (cl-etypecase value
-      (string (spritz--absorb spritz (string-as-unibyte value)))
-      (integer (cl-loop for x = value then (lsh x -8)
-                        while (> x 0)
-                        collect (logand #xff x) into bytes
-                        finally (let ((string (concat (nreverse bytes))))
-                                  (spritz--absorb spritz string)))))))
+      (string
+       (spritz--absorb spritz (string-as-unibyte value)))
+      (buffer
+       (with-current-buffer value
+         (spritz--absorb spritz (string-as-unibyte (buffer-string)))))
+      (integer
+       (cl-loop for x = value then (lsh x -8)
+                while (> x 0)
+                collect (logand #xff x) into bytes
+                finally (let ((string (concat (nreverse bytes))))
+                          (spritz--absorb spritz string)))))))
 
 (defun spritz-absorb-stop (spritz)
   "Absorb the special \"stop\" symbol, returning SPRITZ.
