@@ -161,6 +161,14 @@ remaining bytes are s."
   "Return an independent copy of SPRITZ with matching internal state."
   (copy-sequence spritz))
 
+(defun spritz-p (object)
+  "Return t if OBJECT is a valid Spritz state."
+  (and (stringp object)
+       (not (multibyte-string-p object))
+       (= (+ 256 6) (length object))
+       (equal (sort (nthcdr 6 (cl-coerce object 'list)) #'<)
+              (number-sequence 0 255))))
+
 (defun spritz-absorb (spritz value)
   "Absorb VALUE into SPRITZ, returning SPRITZ.
 VALUE can be a string, a buffer, or an integer. Integers are
