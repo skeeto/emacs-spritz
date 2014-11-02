@@ -48,33 +48,29 @@
 
 (require 'cl-lib)
 
-(cl-defstruct (spritz (:constructor spritz--create)
-                      (:copier nil)
-                      (:type vector)) ; disable type checking
-  (-tag :spritz)
-  (-s (let ((s (make-vector 256 0)))
-        (dotimes (v 256 s)
-          (setf (aref s v) v))))
-  (-i 0)
-  (-j 0)
-  (-k 0)
-  (-a 0)
-  (-z 0)
-  (-w 1))
+(defun spritz--create ()
+  "A Spritz state is a 262-byte unibyte string.
+The first 6 bytes are the values i, j, k, a, z, and w. The
+remaining bytes are s."
+  (let ((spritz (make-string (+ 256 6) 0)))
+    (prog1 spritz
+      (setf (aref spritz 5) 1)
+      (dotimes (v 256)
+        (setf (aref spritz (+ 6 v)) v)))))
 
 (defmacro spritz--defun (name args &rest body)
   "This macro allows the core functions to be written as clearly as possible."
   (declare (indent defun))
   (let ((func-name (intern (concat "spritz--" (symbol-name name)))))
     `(defun ,func-name (this ,@args)
-       (cl-symbol-macrolet ((i (spritz--i this))
-                            (j (spritz--j this))
-                            (k (spritz--k this))
-                            (a (spritz--a this))
-                            (z (spritz--z this))
-                            (w (spritz--w this))
+       (cl-symbol-macrolet ((i (aref this 0))
+                            (j (aref this 1))
+                            (k (aref this 2))
+                            (a (aref this 3))
+                            (z (aref this 4))
+                            (w (aref this 5))
                             (n 256))
-         (cl-macrolet ((s (v) `(aref (spritz--s this) (mod ,v 256)))
+         (cl-macrolet ((s (v) `(aref this (+ (mod ,v 256) 6)))
                        (absorb-byte (b) `(spritz--absorb-byte this ,b))
                        (absorb-nibble (x) `(spritz--absorb-nibble this ,x))
                        (absorb-stop () `(spritz--absorb-stop this))
@@ -163,9 +159,7 @@
 
 (defun spritz-copy (spritz)
   "Return an independent copy of SPRITZ with matching internal state."
-  (let ((copy (copy-sequence spritz)))
-    (prog1 copy
-      (setf (spritz--s copy) (copy-sequence (spritz--s spritz))))))
+  (copy-sequence spritz))
 
 (defun spritz-absorb (spritz value)
   "Absorb VALUE into SPRITZ, returning SPRITZ.
