@@ -244,17 +244,22 @@ used to compute MAC (Message Authentication Codes)."
   (cl-labels ((mix (e)
                 (spritz-absorb-stop spritz-random-state)
                 (spritz-absorb spritz-random-state (format "%s" e))))
-    (if entropy
-        (mapc #'mix entropy)
-      (mix (current-time))
-      (mix (emacs-uptime))
-      (mix (garbage-collect))
-      (mix (random))
-      (mix command-history)
-      (mix (list-system-processes))
-      (mix (cl-random 1.0))
-      (mix (buffer-list))
-      (mix (recent-keys)))))
+    (prog1 spritz-random-state
+      (if entropy
+          (dolist (e entropy)
+            (if (bufferp e)
+                (with-current-buffer e
+                  (mix (buffer-string)))
+              (mix e)))
+        (mix (current-time))
+        (mix (emacs-uptime))
+        (mix (garbage-collect))
+        (mix (random))
+        (mix command-history)
+        (mix (list-system-processes))
+        (mix (cl-random 1.0))
+        (mix (buffer-list))
+        (mix (recent-keys))))))
 
 (cl-eval-when (load eval)
   (spritz-random-stir) ; gather up default entropy sources
