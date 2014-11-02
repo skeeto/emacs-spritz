@@ -235,9 +235,11 @@ used to compute MAC (Message Authentication Codes)."
 
 (defun spritz-random-stir (&rest entropy)
   "Add additional entropy to `spritz-random-state'."
-  (cl-labels ((mix (e) (spritz-absorb spritz-random-state (format "%s" e))))
+  (cl-labels ((mix (e)
+                (spritz-absorb-stop spritz-random-state)
+                (spritz-absorb spritz-random-state (format "%s" e))))
     (if entropy
-        (mix entropy)
+        (mapc #'mix entropy)
       (mix (current-time))
       (mix (emacs-uptime))
       (mix (garbage-collect))
