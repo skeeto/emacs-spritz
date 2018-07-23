@@ -127,8 +127,9 @@ remaining bytes are s."
   (when (> a 0)
     (shuffle))
   (let ((p (make-string r 0)))
-    (dotimes (v r p)
-      (setf (aref p v) (drip)))))
+    (prog1 p
+      (dotimes (v r)
+        (setf (aref p v) (drip))))))
 
 (spritz--defun drip ()
   (when (> a 0)
@@ -178,10 +179,12 @@ its UTF-8 representation is absorbed."
   (prog1 spritz
     (cl-etypecase value
       (string
-       (spritz--absorb spritz (string-as-unibyte value)))
+       (spritz--absorb spritz (encode-coding-string value 'utf-8-unix t)))
       (buffer
        (with-current-buffer value
-         (spritz--absorb spritz (string-as-unibyte (buffer-string)))))
+         (spritz--absorb spritz
+                         (encode-coding-region (point-min)
+                                               (point-max) 'utf-8-unix t))))
       (integer
        (cl-loop for x = value then (lsh x -8)
                 while (> x 0)
