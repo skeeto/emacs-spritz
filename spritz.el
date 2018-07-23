@@ -62,7 +62,7 @@ remaining bytes are s."
   "This macro allows the core functions to be written as clearly as possible."
   (declare (indent defun))
   (let ((func-name (intern (concat "spritz--" (symbol-name name)))))
-    `(defun ,func-name (this ,@args)
+    `(defsubst ,func-name (this ,@args)
        (cl-symbol-macrolet ((i (aref this 0))
                             (j (aref this 1))
                             (k (aref this 2))
@@ -85,24 +85,25 @@ remaining bytes are s."
 
 ;; Core primitives (private):
 
-(spritz--defun absorb (string)
-  (dotimes (v (length string))
-    (absorb-byte (aref string v))))
+(spritz--defun output ()
+  (setf z (s (+ j (s (+ i (s (+ z k))))))))
 
-(spritz--defun absorb-byte (b)
-  (absorb-nibble (logand b #x0f))
-  (absorb-nibble (lsh b -4)))
+(spritz--defun update ()
+  (setf i (mod (+ i w) n))
+  (setf j (mod (+ k (s (+ j (s i)))) n))
+  (setf k (mod (+ i k (s j)) n))
+  (cl-rotatef (s i) (s j)))
 
-(spritz--defun absorb-nibble (x)
-  (when (= a (/ n 2))
-    (shuffle))
-  (cl-rotatef (s a) (s (+ (/ n 2) x)))
-  (cl-incf a))
+(spritz--defun crush ()
+  (dotimes (v (/ n 2))
+    (when (> (s v) (s (- n 1 v)))
+      (cl-rotatef (s v) (s (- n 1 v))))))
 
-(spritz--defun absorb-stop ()
-  (when (= a (/ n 2))
-    (shuffle))
-  (cl-incf a))
+(spritz--defun whip (r)
+  (dotimes (_ r)
+    (update))
+  (cl-loop do (setf w (mod (1+ w) n))
+           until (= 1 (cl-gcd w n))))
 
 (spritz--defun shuffle ()
   (whip (* 2 n))
@@ -112,16 +113,30 @@ remaining bytes are s."
   (whip (* 2 n))
   (setf a 0))
 
-(spritz--defun whip (r)
-  (dotimes (_ r)
-    (update))
-  (cl-loop do (setf w (mod (1+ w) n))
-           until (= 1 (cl-gcd w n))))
+(spritz--defun drip ()
+  (when (> a 0)
+    (shuffle))
+  (update)
+  (output))
 
-(spritz--defun crush ()
-  (dotimes (v (/ n 2))
-    (when (> (s v) (s (- n 1 v)))
-      (cl-rotatef (s v) (s (- n 1 v))))))
+(spritz--defun absorb-nibble (x)
+  (when (= a (/ n 2))
+    (shuffle))
+  (cl-rotatef (s a) (s (+ (/ n 2) x)))
+  (cl-incf a))
+
+(spritz--defun absorb-byte (b)
+  (absorb-nibble (logand b #x0f))
+  (absorb-nibble (lsh b -4)))
+
+(spritz--defun absorb (string)
+  (dotimes (v (length string))
+    (absorb-byte (aref string v))))
+
+(spritz--defun absorb-stop ()
+  (when (= a (/ n 2))
+    (shuffle))
+  (cl-incf a))
 
 (spritz--defun squeeze (r)
   (when (> a 0)
@@ -130,21 +145,6 @@ remaining bytes are s."
     (prog1 p
       (dotimes (v r)
         (setf (aref p v) (drip))))))
-
-(spritz--defun drip ()
-  (when (> a 0)
-    (shuffle))
-  (update)
-  (output))
-
-(spritz--defun update ()
-  (setf i (mod (+ i w) n))
-  (setf j (mod (+ k (s (+ j (s i)))) n))
-  (setf k (mod (+ i k (s j)) n))
-  (cl-rotatef (s i) (s j)))
-
-(spritz--defun output ()
-  (setf z (s (+ j (s (+ i (s (+ z k))))))))
 
 ;; Sponge API:
 
