@@ -1,11 +1,12 @@
 # Spritz in Emacs
 
-Spritz is a new stream cipher by Ron Rivest and Jacob Schuldt. It's
-basically a redesign of RC4 using modern cryptographics tools and
-knowledge. This implementation is based directly on the whitepaper,
-implementing the the exact set of low-level primitives.
+[Spritz][spritz] is a stream cipher by Ron Rivest and Jacob Schuldt.
+It's essentially a redesign of RC4 using modern cryptographics tools
+and knowledge. This implementation is based directly on the
+whitepaper, implementing the the exact set of low-level primitives.
 
-* http://people.csail.mit.edu/rivest/pubs/RS14.pdf
+**Notice**: [Spritz was broken in 2016][broken] and should *not* be
+used for security purposes.
 
 Spritz is a "sponge function" and, as such, has an API analgous to a
 sponge. It absorbs bytes and is squeezed to emit bytes. This is the
@@ -41,3 +42,6 @@ both a stream cipher and key derivation function.
 * `spritz-decrypt-buffer`
 
 Test vectors can be found in the unit tests.
+
+[spritz]: http://people.csail.mit.edu/rivest/pubs/RS14.pdf
+[broken]: https://eprint.iacr.org/2016/092.pdf
